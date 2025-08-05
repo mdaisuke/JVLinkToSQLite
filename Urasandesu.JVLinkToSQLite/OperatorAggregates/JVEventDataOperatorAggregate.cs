@@ -47,24 +47,27 @@ namespace Urasandesu.JVLinkToSQLite.OperatorAggregates
                 _jvLinkSrv = jvLinkSrv;
             }
 
-            public JVEventDataOperatorAggregate New(SQLiteConnectionInfo connInfo, JVDataSpecSetting[] dataSpecSettings)
+            public JVEventDataOperatorAggregate New(SQLiteConnectionInfo connInfo, JVDataSpecSetting[] dataSpecSettings, JVLinkToSQLiteDetailSetting parentSetting = null)
             {
-                return new JVEventDataOperatorAggregate(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSettings);
+                return new JVEventDataOperatorAggregate(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSettings, parentSetting);
             }
         }
 
         private readonly SQLiteConnectionInfo _connInfo;
         private readonly JVDataSpecSetting[] _dataSpecSettings;
+        private readonly JVLinkToSQLiteDetailSetting _parentSetting;
 
         public JVEventDataOperatorAggregate(IResolver resolver,
                                             IJVServiceOperationListener listener,
                                             IJVLinkService jvLinkSrv,
                                             SQLiteConnectionInfo connInfo,
-                                            JVDataSpecSetting[] dataSpecSettings) :
+                                            JVDataSpecSetting[] dataSpecSettings,
+                                            JVLinkToSQLiteDetailSetting parentSetting = null) :
             base(resolver, listener, jvLinkSrv)
         {
             _connInfo = connInfo;
             _dataSpecSettings = dataSpecSettings;
+            _parentSetting = parentSetting;
         }
 
         class MyWatchEventListener : IJVWatchEventListener
@@ -87,7 +90,7 @@ namespace Urasandesu.JVLinkToSQLite.OperatorAggregates
                 {
                     var dataSpecSetting = _dataSpecSetting.Clone();
                     dataSpecSetting.DataSpecKey = new JVRawKey(bstr);
-                    srvOpr = _this._resolver.Resolve<JVRealTimeDataServiceOperator.Factory>().New(_this._connInfo, dataSpecSetting);
+                    srvOpr = _this._resolver.Resolve<JVRealTimeDataServiceOperator.Factory>().New(_this._connInfo, dataSpecSetting, _this._parentSetting);
                 }
                 else
                 {

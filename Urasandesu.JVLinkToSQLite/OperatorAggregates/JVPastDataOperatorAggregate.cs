@@ -45,27 +45,30 @@ namespace Urasandesu.JVLinkToSQLite.OperatorAggregates
                 _jvLinkSrv = jvLinkSrv;
             }
 
-            public JVPastDataOperatorAggregate New(SQLiteConnectionInfo connInfo, JVDataSpecSetting[] dataSpecSettings, JVOpenOptions openOption)
+            public JVPastDataOperatorAggregate New(SQLiteConnectionInfo connInfo, JVDataSpecSetting[] dataSpecSettings, JVOpenOptions openOption, JVLinkToSQLiteDetailSetting parentSetting = null)
             {
-                return new JVPastDataOperatorAggregate(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSettings, openOption);
+                return new JVPastDataOperatorAggregate(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSettings, openOption, parentSetting);
             }
         }
 
         private readonly SQLiteConnectionInfo _connInfo;
         private readonly JVDataSpecSetting[] _dataSpecSettings;
         private readonly JVOpenOptions _openOption;
+        private readonly JVLinkToSQLiteDetailSetting _parentSetting;
 
         public JVPastDataOperatorAggregate(IResolver resolver,
                                            IJVServiceOperationListener listener,
                                            IJVLinkService jvLinkSrv,
                                            SQLiteConnectionInfo connInfo,
                                            JVDataSpecSetting[] dataSpecSettings,
-                                           JVOpenOptions openOption) :
+                                           JVOpenOptions openOption,
+                                           JVLinkToSQLiteDetailSetting parentSetting = null) :
             base(resolver, listener, jvLinkSrv)
         {
             _connInfo = connInfo;
             _dataSpecSettings = dataSpecSettings;
             _openOption = openOption;
+            _parentSetting = parentSetting;
         }
 
         public override JVOperationResultAggregate OperateAll()
@@ -86,7 +89,7 @@ namespace Urasandesu.JVLinkToSQLite.OperatorAggregates
         {
             if (dataSpecSetting.IsEnabled)
             {
-                return _resolver.Resolve<JVPastDataServiceOperator.Factory>().New(connInfo, dataSpecSetting, openOption);
+                return _resolver.Resolve<JVPastDataServiceOperator.Factory>().New(connInfo, dataSpecSetting, openOption, _parentSetting);
             }
             else
             {

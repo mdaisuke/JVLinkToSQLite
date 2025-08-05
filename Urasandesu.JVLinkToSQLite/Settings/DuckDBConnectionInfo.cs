@@ -22,38 +22,40 @@
 // by the terms of ObscUra's license, the licensors of this Program grant you 
 // additional permission to convey the resulting work.
 
-using DryIoc;
-using Urasandesu.JVLinkToSQLite.JVLinkWrappers;
-using Urasandesu.JVLinkToSQLite.OperatorAggregates;
-
 namespace Urasandesu.JVLinkToSQLite.Settings
 {
     /// <summary>
-    /// 動作設定詳細の内、過去データ更新を表す基底クラスです。
+    /// DuckDB データベース接続情報を表します。
     /// </summary>
-    public abstract class JVPastDataUpdateSetting : JVLinkToSQLiteDetailSetting
+    public class DuckDBConnectionInfo
     {
         /// <summary>
-        /// 取得方法種別を取得または設定します。
+        /// DuckDB データベースのファイル パスを指定して、クラスの新しいインスタンスを初期化します。
         /// </summary>
-        public JVOpenOptions OpenOption { get; set; }
+        /// <param name="dataSource">DuckDB データベースのファイル パス</param>
+        public DuckDBConnectionInfo(string dataSource) :
+            this(dataSource, 0)
+        { }
 
-        public override JVOperatorAggregate NewOperatorAggregate(IResolver resolver, bool isImmediate)
+        /// <summary>
+        /// DuckDB データベースのファイル パスと、スロットルサイズを指定して、クラスの新しいインスタンスを初期化します。
+        /// </summary>
+        /// <param name="dataSource">DuckDB データベースのファイル パス</param>
+        /// <param name="throttleSize">スロットルサイズ</param>
+        public DuckDBConnectionInfo(string dataSource, int throttleSize)
         {
-            if (IsEnabled && isImmediate)
-            {
-                // DuckDB設定を子要素に伝播
-                if (DuckDBEnabled && !string.IsNullOrEmpty(DuckDBDataSource) && DuckDBConnectionInfo == null)
-                {
-                    FillWithDuckDBConnectionInfo(new DuckDBConnectionInfo(DuckDBDataSource, SQLiteConnectionInfo.ThrottleSize));
-                }
-                
-                return resolver.Resolve<JVPastDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings, OpenOption, this);
-            }
-            else
-            {
-                return resolver.Resolve<JVNullOperatorAggregate>();
-            }
+            DataSource = dataSource;
+            ThrottleSize = throttleSize;
         }
+
+        /// <summary>
+        /// DuckDB データベースのファイル パスを取得します。
+        /// </summary>
+        public string DataSource { get; }
+
+        /// <summary>
+        /// スロットルサイズを取得します。
+        /// </summary>
+        public int ThrottleSize { get; }
     }
 }

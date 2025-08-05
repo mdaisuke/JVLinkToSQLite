@@ -46,24 +46,27 @@ namespace Urasandesu.JVLinkToSQLite.OperatorAggregates
                 _jvLinkSrv = jvLinkSrv;
             }
 
-            public JVImmediateDataOperatorAggregate New(SQLiteConnectionInfo connInfo, JVDataSpecSetting[] dataSpecSettings)
+            public JVImmediateDataOperatorAggregate New(SQLiteConnectionInfo connInfo, JVDataSpecSetting[] dataSpecSettings, JVLinkToSQLiteDetailSetting parentSetting = null)
             {
-                return new JVImmediateDataOperatorAggregate(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSettings);
+                return new JVImmediateDataOperatorAggregate(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSettings, parentSetting);
             }
         }
 
         private readonly SQLiteConnectionInfo _connInfo;
         private readonly JVDataSpecSetting[] _dataSpecSettings;
+        private readonly JVLinkToSQLiteDetailSetting _parentSetting;
 
         public JVImmediateDataOperatorAggregate(IResolver resolver,
                                                 IJVServiceOperationListener listener,
                                                 IJVLinkService jvLinkSrv,
                                                 SQLiteConnectionInfo connInfo,
-                                                JVDataSpecSetting[] dataSpecSettings) :
+                                                JVDataSpecSetting[] dataSpecSettings,
+                                                JVLinkToSQLiteDetailSetting parentSetting = null) :
             base(resolver, listener, jvLinkSrv)
         {
             _connInfo = connInfo;
             _dataSpecSettings = dataSpecSettings;
+            _parentSetting = parentSetting;
         }
 
         public override JVOperationResultAggregate OperateAll()
@@ -83,7 +86,7 @@ namespace Urasandesu.JVLinkToSQLite.OperatorAggregates
         {
             if (dataSpecSetting.IsEnabled)
             {
-                return _resolver.Resolve<JVRealTimeDataServiceOperator.Factory>().New(connInfo, dataSpecSetting);
+                return _resolver.Resolve<JVRealTimeDataServiceOperator.Factory>().New(connInfo, dataSpecSetting, _parentSetting);
             }
             else
             {

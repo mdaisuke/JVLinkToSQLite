@@ -23,9 +23,11 @@
 // additional permission to convey the resulting work.
 
 using DryIoc;
+using DuckDB.NET.Data;
 using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -39,7 +41,7 @@ using static Urasandesu.JVLinkToSQLite.JVOperationMessenger;
 
 namespace Urasandesu.JVLinkToSQLite.Operators
 {
-    internal class JVDataToSQLiteOperator : IJVDataToDatabaseOperator
+    internal class JVDataToDuckDBOperator : IJVDataToDatabaseOperator
     {
         public class Factory
         {
@@ -52,38 +54,31 @@ namespace Urasandesu.JVLinkToSQLite.Operators
                 _listener = listener;
             }
 
-            public virtual IJVDataToDatabaseOperator New(SQLiteConnectionInfo connInfo, JVOpenResult openRslt, JVRecordSpec[] excludedRecordSpecs)
+            public virtual IJVDataToDatabaseOperator New(DuckDBConnectionInfo connInfo, JVOpenResult openRslt, JVRecordSpec[] excludedRecordSpecs)
             {
-                return new JVDataToSQLiteOperator(_resolver, _listener, connInfo, openRslt, excludedRecordSpecs);
+                return new JVDataToDuckDBOperator(_resolver, _listener, connInfo, openRslt, excludedRecordSpecs);
             }
         }
 
         private readonly IResolver _resolver;
         private readonly IJVServiceOperationListener _listener;
-        private readonly SQLiteConnection _conn;
+        private readonly DuckDBConnection _conn;
         private readonly int _throttleSize;
         private readonly JVOpenResult _openRslt;
         private readonly JVRecordSpec[] _excludedRecordSpecs;
 
-        public JVDataToSQLiteOperator(IResolver resolver,
+        public JVDataToDuckDBOperator(IResolver resolver,
                                       IJVServiceOperationListener listener,
-                                      SQLiteConnectionInfo connInfo,
+                                      DuckDBConnectionInfo connInfo,
                                       JVOpenResult openRslt,
                                       JVRecordSpec[] excludedRecordSpecs)
         {
             _resolver = resolver;
             _listener = listener;
 
-            var connStr = new SQLiteConnectionStringBuilder(@"
-PRAGMA MMAP_SIZE = 2147483648;
-PRAGMA JOURNAL_MODE = MEMORY;
-PRAGMA SYNCHRONOUS = OFF;
-PRAGMA LOCKING_MODE = EXCLUSIVE;
-PRAGMA ENCODING = ""UTF-8"";
-");
+            var connStr = new DuckDBConnectionStringBuilder();
             connStr.DataSource = connInfo.DataSource;
-            connStr.Version = 3;
-            _conn = new SQLiteConnection(connStr.ToString());
+            _conn = new DuckDBConnection(connStr.ToString());
             _throttleSize = connInfo.ThrottleSize;
             _openRslt = openRslt;
             _excludedRecordSpecs = excludedRecordSpecs;
@@ -93,19 +88,19 @@ PRAGMA ENCODING = ""UTF-8"";
         {
             _conn.Open();
             Command = _conn.CreateCommand();
-            var commandCache = Command.NewPreparedCache(_conn.BeginTransaction());
+            var commandCache = new DuckDBPreparedCommandCache(Command, _conn.BeginTransaction());
             try
             {
                 var handler = _resolver.Resolve<JVDataFileSkippabilityHandler.Factory>().New(Command, _excludedRecordSpecs);
                 var reader = _resolver.Resolve<JVOpenResultReader.Factory>().New(_openRslt, handler);
-                using (var bgSQLiteWkr = new BackgroundSQLiteWorker(this, commandCache))
+                using (var bgDuckDBWkr = new BackgroundDuckDBWorker(this, commandCache))
                 {
-                    bgSQLiteWkr.Start();
+                    bgDuckDBWkr.Start();
                     foreach (var readRslt in reader)
                     {
-                        bgSQLiteWkr.Enqueue(readRslt);
+                        bgDuckDBWkr.Enqueue(readRslt);
                     }
-                    bgSQLiteWkr.Join();
+                    bgDuckDBWkr.Join();
                 }
                 return JVLinkServiceOperationResult.Success(nameof(InsertOrUpdateAll));
             }
@@ -127,31 +122,33 @@ PRAGMA ENCODING = ""UTF-8"";
             }
         }
 
-        protected virtual void CreateTable(SQLitePreparedCommandCache commandCache, DataBridge dataBridge)
+        protected virtual void CreateTable(DuckDBPreparedCommandCache commandCache, DataBridge dataBridge)
         {
             var stopwatch = Stopwatch.StartNew();
-            DebugStart(_listener, this, args => $"SQLite CreateTable．．．");
-            foreach (var builtCommand in dataBridge.BuildUpCreateTableCommand(commandCache))
+            DebugStart(_listener, this, args => $"DuckDB CreateTable．．．");
+            var adapter = new DuckDBDataBridgeAdapter();
+            foreach (var builtCommand in adapter.BuildUpCreateTableCommand(commandCache, dataBridge))
             {
-                Verbose(_listener, this, args => $"テーブル作成：{((SQLitePreparedCommand)args[0]).GetLoggingQuery()}", builtCommand);
+                Verbose(_listener, this, args => $"テーブル作成：{args[0]}", builtCommand.GetLoggingQuery());
                 builtCommand.ExecuteNonQuery();
             }
-            DebugEnd(_listener, this, args => $"SQLite CreateTable．．． {args[0]}ms", stopwatch.ElapsedMilliseconds);
+            DebugEnd(_listener, this, args => $"DuckDB CreateTable．．． {args[0]}ms", stopwatch.ElapsedMilliseconds);
         }
 
-        protected virtual void Insert(SQLitePreparedCommandCache commandCache, DataBridge dataBridge)
+        protected virtual void Insert(DuckDBPreparedCommandCache commandCache, DataBridge dataBridge)
         {
             var stopwatch2 = Stopwatch.StartNew();
-            DebugStart(_listener, this, args => $"SQLite Insert．．．");
-            foreach (var builtCommand in dataBridge.BuildUpInsertCommand(commandCache))
+            DebugStart(_listener, this, args => $"DuckDB Insert．．．");
+            var adapter = new DuckDBDataBridgeAdapter();
+            foreach (var builtCommand in adapter.BuildUpInsertCommand(commandCache, dataBridge))
             {
-                Verbose(_listener, this, args => $"レコード作成：{((SQLitePreparedCommand)args[0]).GetLoggingQuery()}", builtCommand);
+                Verbose(_listener, this, args => $"レコード作成：{args[0]}", builtCommand.GetLoggingQuery());
                 builtCommand.ExecuteNonQuery();
             }
-            DebugEnd(_listener, this, args => $"SQLite Insert．．． {args[0]}ms", stopwatch2.ElapsedMilliseconds);
+            DebugEnd(_listener, this, args => $"DuckDB Insert．．． {args[0]}ms", stopwatch2.ElapsedMilliseconds);
         }
 
-        public SQLiteCommand Command { get; private set; }
+        public IDbCommand Command { get; private set; }
 
         private bool disposedValue;
         protected virtual void Dispose(bool disposing)
@@ -173,16 +170,16 @@ PRAGMA ENCODING = ""UTF-8"";
             GC.SuppressFinalize(this);
         }
 
-        private class BackgroundSQLiteWorker : IDisposable
+        private class BackgroundDuckDBWorker : IDisposable
         {
-            private readonly JVDataToSQLiteOperator _this;
-            private readonly SQLitePreparedCommandCache _commandCache;
+            private readonly JVDataToDuckDBOperator _this;
+            private readonly DuckDBPreparedCommandCache _commandCache;
             private readonly HashSet<string> _publishedDdlSet = new HashSet<string>();
             private readonly AsyncAccumulatingQueue<JVReadResult> _queue;
             private Thread _thread;
             private Exception _threadEx;
 
-            public BackgroundSQLiteWorker(JVDataToSQLiteOperator @this, SQLitePreparedCommandCache commandCache)
+            public BackgroundDuckDBWorker(JVDataToDuckDBOperator @this, DuckDBPreparedCommandCache commandCache)
             {
                 _this = @this;
                 _queue = new AsyncAccumulatingQueue<JVReadResult>(@this._throttleSize);
@@ -207,7 +204,7 @@ PRAGMA ENCODING = ""UTF-8"";
 
                                 if (!_publishedDdlSet.Contains(dataBridge.TableName))
                                 {
-                                    InfoStart(_this._listener, this, args => $"SQLite 更新．．．テーブル：{args[0]}", dataBridge.TableName);
+                                    InfoStart(_this._listener, this, args => $"DuckDB 更新．．．テーブル：{args[0]}", dataBridge.TableName);
 
                                     _this.CreateTable(_commandCache, dataBridge);
 
@@ -217,14 +214,14 @@ PRAGMA ENCODING = ""UTF-8"";
                                 recordCount++;
                                 if (stopwatch.Elapsed - infoElapsed > TimeSpan.FromSeconds(1))
                                 {
-                                    Info(_this._listener, this, args => $"SQLite 更新中．．．{args[0]} レコード", recordCount);
+                                    Info(_this._listener, this, args => $"DuckDB 更新中．．．{args[0]} レコード", recordCount);
                                     infoElapsed = stopwatch.Elapsed;
                                 }
                                 _this.Insert(_commandCache, dataBridge);
                             }
                             else if (readRslt.Status == JVReadStatus.FileChanged)
                             {
-                                Info(_this._listener, this, args => $"SQLite 更新完了（ファイル '{args[0]}' 分）．．． {args[1]} レコード", readRslt.FileName, recordCount);
+                                Info(_this._listener, this, args => $"DuckDB 更新完了（ファイル '{args[0]}' 分）．．． {args[1]} レコード", readRslt.FileName, recordCount);
                                 stopwatch = Stopwatch.StartNew();
                                 infoElapsed = stopwatch.Elapsed;
                                 recordCount = 0;
@@ -254,7 +251,7 @@ PRAGMA ENCODING = ""UTF-8"";
                     ExceptionDispatchInfo.Capture(_threadEx).Throw();
                 }
                 _commandCache.Commit();
-                InfoEnd(_this._listener, this, args => $"SQLite 更新．．．テーブル：{StringMixin.JoinIfAvailable(", ", args[0])}", _publishedDdlSet);
+                InfoEnd(_this._listener, this, args => $"DuckDB 更新．．．テーブル：{StringMixin.JoinIfAvailable(", ", args[0])}", _publishedDdlSet);
             }
 
             private bool disposedValue;
@@ -276,6 +273,92 @@ PRAGMA ENCODING = ""UTF-8"";
                 Dispose(disposing: true);
                 GC.SuppressFinalize(this);
             }
+        }
+    }
+
+    /// <summary>
+    /// DuckDB用のPreparedCommandCache実装
+    /// </summary>
+    internal class DuckDBPreparedCommandCache : IPreparedCommandCache
+    {
+        private readonly IDbCommand _command;
+        private readonly IDbTransaction _transaction;
+        private readonly Dictionary<string, DuckDBPreparedCommand> _cache = new Dictionary<string, DuckDBPreparedCommand>();
+
+        public DuckDBPreparedCommandCache(IDbCommand command, IDbTransaction transaction)
+        {
+            _command = command;
+            _transaction = transaction;
+        }
+
+        public IPreparedCommand Get(string commandText)
+        {
+            if (!_cache.TryGetValue(commandText, out var preparedCommand))
+            {
+                var newCommand = _command.Connection.CreateCommand();
+                newCommand.CommandText = commandText;
+                newCommand.Transaction = _transaction;
+                preparedCommand = new DuckDBPreparedCommand(newCommand);
+                _cache[commandText] = preparedCommand;
+            }
+            return preparedCommand;
+        }
+
+        public void Commit()
+        {
+            _transaction.Commit();
+        }
+
+        public void CommitAndNewTransaction()
+        {
+            _transaction.Commit();
+            var newTransaction = _command.Connection.BeginTransaction();
+            foreach (var preparedCommand in _cache.Values)
+            {
+                preparedCommand.Command.Transaction = newTransaction;
+            }
+        }
+
+        public void Rollback()
+        {
+            _transaction.Rollback();
+        }
+
+        public void Dispose()
+        {
+            foreach (var preparedCommand in _cache.Values)
+            {
+                preparedCommand.Dispose();
+            }
+            _transaction.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// DuckDB用のPreparedCommand実装
+    /// </summary>
+    internal class DuckDBPreparedCommand : IPreparedCommand
+    {
+        public IDbCommand Command { get; }
+
+        public DuckDBPreparedCommand(IDbCommand command)
+        {
+            Command = command;
+        }
+
+        public void ExecuteNonQuery()
+        {
+            Command.ExecuteNonQuery();
+        }
+
+        public string GetLoggingQuery()
+        {
+            return Command.CommandText;
+        }
+
+        public void Dispose()
+        {
+            Command.Dispose();
         }
     }
 }

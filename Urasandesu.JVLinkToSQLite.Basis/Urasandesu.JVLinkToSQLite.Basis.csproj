@@ -88,6 +88,8 @@
     <Compile Include="Mixins\Mono\Cecil\TypeReferenceMixin.cs" />
     <Compile Include="Mixins\System\Collections\Concurrent\AsyncAccumulatingQueue`1.cs" />
     <Compile Include="Mixins\System\Collections\Generic\ReadOnlyHashSet`1.cs" />
+    <Compile Include="Mixins\System\Data\IPreparedCommand.cs" />
+    <Compile Include="Mixins\System\Data\IPreparedCommandCache.cs" />
     <Compile Include="Mixins\System\Data\SQLitePreparedCommandKey.cs" />
     <Compile Include="Mixins\System\Data\SQLitePreparedParameterCollection.cs" />
     <Compile Include="Mixins\System\Data\SQLitePreparedCommand.cs" />

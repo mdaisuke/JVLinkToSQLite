@@ -34,13 +34,19 @@ namespace Urasandesu.JVLinkToSQLite.Settings
     {
         public override JVOperatorAggregate NewOperatorAggregate(IResolver resolver, bool isImmediate)
         {
+            // DuckDB設定を子要素に伝播
+            if (DuckDBEnabled && !string.IsNullOrEmpty(DuckDBDataSource) && DuckDBConnectionInfo == null)
+            {
+                FillWithDuckDBConnectionInfo(new DuckDBConnectionInfo(DuckDBDataSource, SQLiteConnectionInfo.ThrottleSize));
+            }
+            
             if (IsEnabled && isImmediate)
             {
-                return resolver.Resolve<JVImmediateDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings);
+                return resolver.Resolve<JVImmediateDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings, this);
             }
             else if (IsEnabled && !isImmediate)
             {
-                return resolver.Resolve<JVEventDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings);
+                return resolver.Resolve<JVEventDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings, this);
             }
             else
             {

@@ -22,38 +22,24 @@
 // by the terms of ObscUra's license, the licensors of this Program grant you 
 // additional permission to convey the resulting work.
 
-using DryIoc;
-using Urasandesu.JVLinkToSQLite.JVLinkWrappers;
-using Urasandesu.JVLinkToSQLite.OperatorAggregates;
+using System;
 
-namespace Urasandesu.JVLinkToSQLite.Settings
+namespace Urasandesu.JVLinkToSQLite.Basis.Mixins.System.Data
 {
     /// <summary>
-    /// 動作設定詳細の内、過去データ更新を表す基底クラスです。
+    /// 準備済みコマンドを表すインターフェース
     /// </summary>
-    public abstract class JVPastDataUpdateSetting : JVLinkToSQLiteDetailSetting
+    public interface IPreparedCommand : IDisposable
     {
         /// <summary>
-        /// 取得方法種別を取得または設定します。
+        /// コマンドを実行します。
         /// </summary>
-        public JVOpenOptions OpenOption { get; set; }
+        void ExecuteNonQuery();
 
-        public override JVOperatorAggregate NewOperatorAggregate(IResolver resolver, bool isImmediate)
-        {
-            if (IsEnabled && isImmediate)
-            {
-                // DuckDB設定を子要素に伝播
-                if (DuckDBEnabled && !string.IsNullOrEmpty(DuckDBDataSource) && DuckDBConnectionInfo == null)
-                {
-                    FillWithDuckDBConnectionInfo(new DuckDBConnectionInfo(DuckDBDataSource, SQLiteConnectionInfo.ThrottleSize));
-                }
-                
-                return resolver.Resolve<JVPastDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings, OpenOption, this);
-            }
-            else
-            {
-                return resolver.Resolve<JVNullOperatorAggregate>();
-            }
-        }
+        /// <summary>
+        /// ログ出力用のクエリ文字列を取得します。
+        /// </summary>
+        /// <returns>クエリ文字列</returns>
+        string GetLoggingQuery();
     }
 }

@@ -51,9 +51,35 @@ namespace Urasandesu.JVLinkToSQLite.Settings
         [XmlIgnore]
         public SQLiteConnectionInfo SQLiteConnectionInfo { get; private set; }
 
+        /// <summary>
+        /// DuckDB出力が有効かどうかを取得または設定します。
+        /// </summary>
+        public bool DuckDBEnabled { get; set; }
+
+        /// <summary>
+        /// DuckDBデータベースのファイルパスを取得または設定します。
+        /// </summary>
+        public string DuckDBDataSource { get; set; }
+
+        /// <summary>
+        /// DuckDBエラー時に処理を継続するかどうかを取得または設定します。
+        /// </summary>
+        public bool ContinueOnDuckDBError { get; set; }
+
+        /// <summary>
+        /// DuckDB データベース接続情報を取得します。
+        /// </summary>
+        [XmlIgnore]
+        public DuckDBConnectionInfo DuckDBConnectionInfo { get; private set; }
+
         internal void FillWithSQLiteConnectionInfo(SQLiteConnectionInfo connInfo)
         {
             SQLiteConnectionInfo = connInfo;
+        }
+
+        internal void FillWithDuckDBConnectionInfo(DuckDBConnectionInfo connInfo)
+        {
+            DuckDBConnectionInfo = connInfo;
         }
 
         public virtual JVOperatorAggregate NewOperatorAggregate(IResolver resolver, bool isImmediate)

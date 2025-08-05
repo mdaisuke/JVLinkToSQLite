@@ -69,6 +69,8 @@ namespace Urasandesu.JVLinkToSQLite
 
             container.Register<JVStatusTimer.Factory>();
             container.Register<JVDataToSQLiteOperator.Factory>();
+            container.Register<JVDataToDuckDBOperator.Factory>();
+            container.Register<JVDataToMultiDatabaseOperator.Factory>();
             container.Register<JVOpenResultReader.Factory>();
             container.Register<JVDataFileSkippabilityHandler.Factory>();
             container.Register<DataBridgeFactory.Factory>();

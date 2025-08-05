@@ -22,38 +22,35 @@
 // by the terms of ObscUra's license, the licensors of this Program grant you 
 // additional permission to convey the resulting work.
 
-using DryIoc;
-using Urasandesu.JVLinkToSQLite.JVLinkWrappers;
-using Urasandesu.JVLinkToSQLite.OperatorAggregates;
+using System;
 
-namespace Urasandesu.JVLinkToSQLite.Settings
+namespace Urasandesu.JVLinkToSQLite.Basis.Mixins.System.Data
 {
     /// <summary>
-    /// 動作設定詳細の内、過去データ更新を表す基底クラスです。
+    /// 準備済みコマンドのキャッシュを表すインターフェース
     /// </summary>
-    public abstract class JVPastDataUpdateSetting : JVLinkToSQLiteDetailSetting
+    public interface IPreparedCommandCache : IDisposable
     {
         /// <summary>
-        /// 取得方法種別を取得または設定します。
+        /// 指定されたコマンドテキストに対応する準備済みコマンドを取得します。
         /// </summary>
-        public JVOpenOptions OpenOption { get; set; }
+        /// <param name="commandText">コマンドテキスト</param>
+        /// <returns>準備済みコマンド</returns>
+        IPreparedCommand Get(string commandText);
 
-        public override JVOperatorAggregate NewOperatorAggregate(IResolver resolver, bool isImmediate)
-        {
-            if (IsEnabled && isImmediate)
-            {
-                // DuckDB設定を子要素に伝播
-                if (DuckDBEnabled && !string.IsNullOrEmpty(DuckDBDataSource) && DuckDBConnectionInfo == null)
-                {
-                    FillWithDuckDBConnectionInfo(new DuckDBConnectionInfo(DuckDBDataSource, SQLiteConnectionInfo.ThrottleSize));
-                }
-                
-                return resolver.Resolve<JVPastDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings, OpenOption, this);
-            }
-            else
-            {
-                return resolver.Resolve<JVNullOperatorAggregate>();
-            }
-        }
+        /// <summary>
+        /// トランザクションをコミットします。
+        /// </summary>
+        void Commit();
+
+        /// <summary>
+        /// トランザクションをコミットし、新しいトランザクションを開始します。
+        /// </summary>
+        void CommitAndNewTransaction();
+
+        /// <summary>
+        /// トランザクションをロールバックします。
+        /// </summary>
+        void Rollback();
     }
 }

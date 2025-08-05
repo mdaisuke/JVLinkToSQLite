@@ -22,37 +22,38 @@
 // by the terms of ObscUra's license, the licensors of this Program grant you 
 // additional permission to convey the resulting work.
 
-using DryIoc;
-using Urasandesu.JVLinkToSQLite.JVLinkWrappers;
-using Urasandesu.JVLinkToSQLite.OperatorAggregates;
+using System.Collections.Generic;
+using System.Linq;
+using Urasandesu.JVLinkToSQLite.Basis.Mixins.System.Data;
 
-namespace Urasandesu.JVLinkToSQLite.Settings
+namespace Urasandesu.JVLinkToSQLite.JVLinkWrappers.DataBridges
 {
     /// <summary>
-    /// 動作設定詳細の内、過去データ更新を表す基底クラスです。
+    /// SQLite用のDataBridgeアダプタ実装
     /// </summary>
-    public abstract class JVPastDataUpdateSetting : JVLinkToSQLiteDetailSetting
+    public class SQLiteDataBridgeAdapter : IDataBridgeAdapter
     {
-        /// <summary>
-        /// 取得方法種別を取得または設定します。
-        /// </summary>
-        public JVOpenOptions OpenOption { get; set; }
-
-        public override JVOperatorAggregate NewOperatorAggregate(IResolver resolver, bool isImmediate)
+        public IEnumerable<IPreparedCommand> BuildUpCreateTableCommand(IPreparedCommandCache commandCache, DataBridge dataBridge)
         {
-            if (IsEnabled && isImmediate)
+            if (commandCache is SQLitePreparedCommandCache sqliteCache)
             {
-                // DuckDB設定を子要素に伝播
-                if (DuckDBEnabled && !string.IsNullOrEmpty(DuckDBDataSource) && DuckDBConnectionInfo == null)
-                {
-                    FillWithDuckDBConnectionInfo(new DuckDBConnectionInfo(DuckDBDataSource, SQLiteConnectionInfo.ThrottleSize));
-                }
-                
-                return resolver.Resolve<JVPastDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings, OpenOption, this);
+                return dataBridge.BuildUpCreateTableCommand(sqliteCache).Cast<IPreparedCommand>();
             }
             else
             {
-                return resolver.Resolve<JVNullOperatorAggregate>();
+                throw new System.InvalidOperationException("SQLiteDataBridgeAdapter requires SQLitePreparedCommandCache");
+            }
+        }
+
+        public IEnumerable<IPreparedCommand> BuildUpInsertCommand(IPreparedCommandCache commandCache, DataBridge dataBridge)
+        {
+            if (commandCache is SQLitePreparedCommandCache sqliteCache)
+            {
+                return dataBridge.BuildUpInsertCommand(sqliteCache).Cast<IPreparedCommand>();
+            }
+            else
+            {
+                throw new System.InvalidOperationException("SQLiteDataBridgeAdapter requires SQLitePreparedCommandCache");
             }
         }
     }

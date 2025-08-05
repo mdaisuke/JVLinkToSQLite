@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<JVLinkToSQLiteSetting xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <DataSource>JVData.db</DataSource>
+  <DataSourceForUpdate>JVDataForUpdate.db</DataSourceForUpdate>
+  <Details>
+    <JVNormalUpdateSetting>
+      <IsEnabled>true</IsEnabled>
+      <DataSpecSettings>
+        <JVDataSpecSetting>
+          <IsEnabled>true</IsEnabled>
+          <DataSpec>RACE</DataSpec>
+          <DataSpecKey xsi:type="JVKaisaiDateTimeKey">
+            <Value>1986-01-01T00:00:00</Value>
+          </DataSpecKey>
+          <TimeIntervalUnit>P121.75D</TimeIntervalUnit>
+        </JVDataSpecSetting>
+      </DataSpecSettings>
+      <OpenOption>Normal</OpenOption>
+      <!-- DuckDB設定 -->
+      <DuckDBEnabled>true</DuckDBEnabled>
+      <DuckDBDataSource>JVData.duckdb</DuckDBDataSource>
+      <ContinueOnDuckDBError>true</ContinueOnDuckDBError>
+    </JVNormalUpdateSetting>
+    <JVSetupDataUpdateSetting>
+      <IsEnabled>true</IsEnabled>
+      <DataSpecSettings>
+        <JVDataSpecSetting>
+          <IsEnabled>true</IsEnabled>
+          <DataSpec>DIFF</DataSpec>
+          <DataSpecKey xsi:type="JVKaisaiDateTimeKey">
+            <Value>1970-01-01T00:00:00</Value>
+          </DataSpecKey>
+          <TimeIntervalUnit>P121.75D</TimeIntervalUnit>
+        </JVDataSpecSetting>
+      </DataSpecSettings>
+      <OpenOption>Setup</OpenOption>
+      <!-- DuckDB設定 -->
+      <DuckDBEnabled>true</DuckDBEnabled>
+      <DuckDBDataSource>JVData.duckdb</DuckDBDataSource>
+      <ContinueOnDuckDBError>true</ContinueOnDuckDBError>
+    </JVSetupDataUpdateSetting>
+    <JVRealTimeDataUpdateSetting>
+      <IsEnabled>true</IsEnabled>
+      <DataSpecSettings>
+        <JVDataSpecSetting>
+          <IsEnabled>true</IsEnabled>
+          <DataSpec>0B12</DataSpec>
+          <DataSpecKey xsi:type="JVKaisaiDateTimeKey">
+            <Value>1986-01-01T00:00:00</Value>
+          </DataSpecKey>
+          <TimeIntervalUnit>PT0S</TimeIntervalUnit>
+        </JVDataSpecSetting>
+      </DataSpecSettings>
+      <!-- DuckDB設定 -->
+      <DuckDBEnabled>true</DuckDBEnabled>
+      <DuckDBDataSource>JVData.duckdb</DuckDBDataSource>
+      <ContinueOnDuckDBError>true</ContinueOnDuckDBError>
+    </JVRealTimeDataUpdateSetting>
+  </Details>
+</JVLinkToSQLiteSetting>

@@ -400,3 +400,5 @@ FodyWeavers.xsd
 *.g.cs
 /Urasandesu.JVLinkToSQLite.JVData/bin
 /work
+
+.serena

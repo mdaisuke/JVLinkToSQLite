@@ -37,6 +37,9 @@
     <Reference Include="DryIoc, Version=5.4.1.0, Culture=neutral, PublicKeyToken=dfbf2bd50fcf7768, processorArchitecture=MSIL">
       <HintPath>..\packages\DryIoc.dll.5.4.1\lib\net45\DryIoc.dll</HintPath>
     </Reference>
+    <Reference Include="DuckDB.NET, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\DuckDB.NET.1.0.2\lib\netstandard2.0\DuckDB.NET.dll</HintPath>
+    </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
@@ -151,7 +154,10 @@
     <Compile Include="ReturnCodeRanges.cs" />
     <Compile Include="Settings\JVDataSpecSetting.cs" />
     <Compile Include="Operators\JVLinkServiceOperationResult.cs" />
+    <Compile Include="Operators\IJVDataToDatabaseOperator.cs" />
     <Compile Include="Operators\JVDataToSQLiteOperator.cs" />
+    <Compile Include="Operators\JVDataToDuckDBOperator.cs" />
+    <Compile Include="Operators\JVDataToMultiDatabaseOperator.cs" />
     <Compile Include="Settings\JVLinkToSQLiteDetailSetting.cs" />
     <Compile Include="Settings\JVLinkToSQLiteSetting.cs" />
     <Compile Include="JVLinkToSQLiteBootstrap.cs" />
@@ -159,6 +165,9 @@
     <Compile Include="JVLinkWrappers\DataBridges\DataBridge`1.cs" />
     <Compile Include="JVLinkWrappers\DataBridges\DataBridge.cs" />
     <Compile Include="JVLinkWrappers\DataBridges\DataBridgeFactory.cs" />
+    <Compile Include="JVLinkWrappers\DataBridges\IDataBridgeAdapter.cs" />
+    <Compile Include="JVLinkWrappers\DataBridges\SQLiteDataBridgeAdapter.cs" />
+    <Compile Include="JVLinkWrappers\DataBridges\DuckDBDataBridgeAdapter.cs" />
     <Compile Include="JVLinkWrappers\IJVLinkService.cs" />
     <Compile Include="JVLinkWrappers\DataBridges\JVDataStructColumns.cs" />
     <Compile Include="JVLinkWrappers\DataBridges\JVDataStructCommandTextSources.cs" />
@@ -227,6 +236,7 @@
     <Compile Include="Settings\JVSetupDataUpdateSetting.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Settings\SQLiteConnectionInfo.cs" />
+    <Compile Include="Settings\DuckDBConnectionInfo.cs" />
     <Compile Include="XmlSerializationService.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -47,24 +47,28 @@ namespace Urasandesu.JVLinkToSQLite.Operators
             }
 
             public JVRealTimeDataServiceOperator New(SQLiteConnectionInfo connInfo,
-                                                     JVDataSpecSetting dataSpecSetting)
+                                                     JVDataSpecSetting dataSpecSetting,
+                                                     JVLinkToSQLiteDetailSetting parentSetting = null)
             {
-                return new JVRealTimeDataServiceOperator(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSetting);
+                return new JVRealTimeDataServiceOperator(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSetting, parentSetting);
             }
         }
 
         private readonly SQLiteConnectionInfo _connInfo;
         private readonly JVDataSpecSetting _dataSpecSetting;
+        private readonly JVLinkToSQLiteDetailSetting _parentSetting;
 
         public JVRealTimeDataServiceOperator(IResolver resolver,
                                              IJVServiceOperationListener listener,
                                              IJVLinkService jvLinkSrv,
                                              SQLiteConnectionInfo connInfo,
-                                             JVDataSpecSetting dataSpecSetting) :
+                                             JVDataSpecSetting dataSpecSetting,
+                                             JVLinkToSQLiteDetailSetting parentSetting = null) :
             base(resolver, listener, jvLinkSrv)
         {
             _connInfo = connInfo;
             _dataSpecSetting = dataSpecSetting;
+            _parentSetting = parentSetting;
         }
 
         static string MessageForServiceOperationError(params object[] args) =>
@@ -111,9 +115,21 @@ namespace Urasandesu.JVLinkToSQLite.Operators
                     return oprRslt;
                 }
 
-                using (var jvDataToSQLiteOpr = _resolver.Resolve<JVDataToSQLiteOperator.Factory>().New(_connInfo, openRslt, _dataSpecSetting.ExcludedJVRecordSpecs))
+                IJVDataToDatabaseOperator databaseOperator;
+                if (_parentSetting != null && _parentSetting.DuckDBEnabled && !string.IsNullOrEmpty(_parentSetting.DuckDBDataSource))
                 {
-                    return jvDataToSQLiteOpr.InsertOrUpdateAll();
+                    var duckdbConnInfo = new DuckDBConnectionInfo(_parentSetting.DuckDBDataSource, _connInfo.ThrottleSize);
+                    databaseOperator = _resolver.Resolve<JVDataToMultiDatabaseOperator.Factory>().New(
+                        _connInfo, duckdbConnInfo, openRslt, _dataSpecSetting.ExcludedJVRecordSpecs, _parentSetting.ContinueOnDuckDBError);
+                }
+                else
+                {
+                    databaseOperator = _resolver.Resolve<JVDataToSQLiteOperator.Factory>().New(_connInfo, openRslt, _dataSpecSetting.ExcludedJVRecordSpecs);
+                }
+
+                using (databaseOperator)
+                {
+                    return databaseOperator.InsertOrUpdateAll();
                 }
             }
         }

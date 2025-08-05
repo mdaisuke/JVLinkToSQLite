@@ -22,38 +22,24 @@
 // by the terms of ObscUra's license, the licensors of this Program grant you 
 // additional permission to convey the resulting work.
 
-using DryIoc;
-using Urasandesu.JVLinkToSQLite.JVLinkWrappers;
-using Urasandesu.JVLinkToSQLite.OperatorAggregates;
+using System.Collections.Generic;
+using Urasandesu.JVLinkToSQLite.Basis.Mixins.System.Data;
 
-namespace Urasandesu.JVLinkToSQLite.Settings
+namespace Urasandesu.JVLinkToSQLite.JVLinkWrappers.DataBridges
 {
     /// <summary>
-    /// 動作設定詳細の内、過去データ更新を表す基底クラスです。
+    /// DataBridgeをデータベース固有の実装に適応させるためのアダプタインターフェース
     /// </summary>
-    public abstract class JVPastDataUpdateSetting : JVLinkToSQLiteDetailSetting
+    public interface IDataBridgeAdapter
     {
         /// <summary>
-        /// 取得方法種別を取得または設定します。
+        /// CREATE TABLE コマンドを構築します。
         /// </summary>
-        public JVOpenOptions OpenOption { get; set; }
+        IEnumerable<IPreparedCommand> BuildUpCreateTableCommand(IPreparedCommandCache commandCache, DataBridge dataBridge);
 
-        public override JVOperatorAggregate NewOperatorAggregate(IResolver resolver, bool isImmediate)
-        {
-            if (IsEnabled && isImmediate)
-            {
-                // DuckDB設定を子要素に伝播
-                if (DuckDBEnabled && !string.IsNullOrEmpty(DuckDBDataSource) && DuckDBConnectionInfo == null)
-                {
-                    FillWithDuckDBConnectionInfo(new DuckDBConnectionInfo(DuckDBDataSource, SQLiteConnectionInfo.ThrottleSize));
-                }
-                
-                return resolver.Resolve<JVPastDataOperatorAggregate.Factory>().New(SQLiteConnectionInfo, DataSpecSettings, OpenOption, this);
-            }
-            else
-            {
-                return resolver.Resolve<JVNullOperatorAggregate>();
-            }
-        }
+        /// <summary>
+        /// INSERT コマンドを構築します。
+        /// </summary>
+        IEnumerable<IPreparedCommand> BuildUpInsertCommand(IPreparedCommandCache commandCache, DataBridge dataBridge);
     }
 }

@@ -48,27 +48,31 @@ namespace Urasandesu.JVLinkToSQLite.Operators
 
             public JVPastDataServiceOperator New(SQLiteConnectionInfo connInfo,
                                                  JVDataSpecSetting dataSpecSetting,
-                                                 JVOpenOptions openOption)
+                                                 JVOpenOptions openOption,
+                                                 JVLinkToSQLiteDetailSetting parentSetting = null)
             {
-                return new JVPastDataServiceOperator(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSetting, openOption);
+                return new JVPastDataServiceOperator(_resolver, _listener, _jvLinkSrv, connInfo, dataSpecSetting, openOption, parentSetting);
             }
         }
 
         private readonly SQLiteConnectionInfo _connInfo;
         private readonly JVDataSpecSetting _dataSpecSetting;
         private readonly JVOpenOptions _openOption;
+        private readonly JVLinkToSQLiteDetailSetting _parentSetting;
 
         public JVPastDataServiceOperator(IResolver resolver,
                                          IJVServiceOperationListener listener,
                                          IJVLinkService jvLinkSrv,
                                          SQLiteConnectionInfo connInfo,
                                          JVDataSpecSetting dataSpecSetting,
-                                         JVOpenOptions openOption) :
+                                         JVOpenOptions openOption,
+                                         JVLinkToSQLiteDetailSetting parentSetting = null) :
             base(resolver, listener, jvLinkSrv)
         {
             _connInfo = connInfo;
             _dataSpecSetting = dataSpecSetting;
             _openOption = openOption;
+            _parentSetting = parentSetting;
         }
 
         static string MessageForServiceOperationError(params object[] args) =>
@@ -129,9 +133,21 @@ namespace Urasandesu.JVLinkToSQLite.Operators
                         }
                     }
 
-                    using (var jvDataToSQLiteOpr = _resolver.Resolve<JVDataToSQLiteOperator.Factory>().New(_connInfo, openRslt, _dataSpecSetting.ExcludedJVRecordSpecs))
+                    IJVDataToDatabaseOperator databaseOperator;
+                    if (_parentSetting != null && _parentSetting.DuckDBEnabled && !string.IsNullOrEmpty(_parentSetting.DuckDBDataSource))
                     {
-                        var oprRslt = jvDataToSQLiteOpr.InsertOrUpdateAll();
+                        var duckdbConnInfo = new DuckDBConnectionInfo(_parentSetting.DuckDBDataSource, _connInfo.ThrottleSize);
+                        databaseOperator = _resolver.Resolve<JVDataToMultiDatabaseOperator.Factory>().New(
+                            _connInfo, duckdbConnInfo, openRslt, _dataSpecSetting.ExcludedJVRecordSpecs, _parentSetting.ContinueOnDuckDBError);
+                    }
+                    else
+                    {
+                        databaseOperator = _resolver.Resolve<JVDataToSQLiteOperator.Factory>().New(_connInfo, openRslt, _dataSpecSetting.ExcludedJVRecordSpecs);
+                    }
+
+                    using (databaseOperator)
+                    {
+                        var oprRslt = databaseOperator.InsertOrUpdateAll();
                         if (oprRslt.Interpretation.Succeeded && openRslt.LastFileTimestamp.HasValue)
                         {
                             _dataSpecSetting.DataSpecKey = new JVKaisaiDateTimeKey(openRslt.LastFileTimestamp.Value);
