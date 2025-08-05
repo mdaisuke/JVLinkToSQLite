@@ -37,8 +37,8 @@
     <Reference Include="DryIoc, Version=5.4.1.0, Culture=neutral, PublicKeyToken=dfbf2bd50fcf7768, processorArchitecture=MSIL">
       <HintPath>..\packages\DryIoc.dll.5.4.1\lib\net45\DryIoc.dll</HintPath>
     </Reference>
-    <Reference Include="DuckDB.NET, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\DuckDB.NET.1.0.2\lib\netstandard2.0\DuckDB.NET.dll</HintPath>
+    <Reference Include="DuckDB.NET.Data, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\DuckDB.NET.Data.Full.1.0.2\lib\netstandard2.0\DuckDB.NET.Data.dll</HintPath>
     </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>

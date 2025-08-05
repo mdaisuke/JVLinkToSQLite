@@ -94,6 +94,8 @@
     <Compile Include="Mixins\System\Data\SQLitePreparedParameterCollection.cs" />
     <Compile Include="Mixins\System\Data\SQLitePreparedCommand.cs" />
     <Compile Include="Mixins\System\Data\SQLitePreparedCommandCache.cs" />
+    <Compile Include="Mixins\System\Data\DuckDBPreparedCommand.cs" />
+    <Compile Include="Mixins\System\Data\DuckDBPreparedCommandCache.cs" />
     <Compile Include="Mixins\System\Data\SQLiteCommandMixin.cs" />
     <Compile Include="Mixins\System\Data\SQLiteParameterCollectionMixin.cs" />
     <Compile Include="Mixins\System\Data\Common\DbCommandMixin.cs" />
