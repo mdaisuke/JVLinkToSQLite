@@ -24,12 +24,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using DuckDB.NET.Data;
 using Urasandesu.JVLinkToSQLite.Basis.Mixins.System.Data;
-using Urasandesu.JVLinkToSQLite.Operators;
 
 namespace Urasandesu.JVLinkToSQLite.JVLinkWrappers.DataBridges
 {
@@ -40,104 +39,36 @@ namespace Urasandesu.JVLinkToSQLite.JVLinkWrappers.DataBridges
     {
         public IEnumerable<IPreparedCommand> BuildUpCreateTableCommand(IPreparedCommandCache commandCache, DataBridge dataBridge)
         {
-            // メインテーブルのCREATE TABLE文を生成
-            var createTableSql = ConvertSQLiteToDuckDBCreateTable(dataBridge.Columns.GetCommandText(dataBridge.TableName));
-            var command = commandCache.Get(createTableSql);
-            yield return command;
-
-            // 子テーブルのCREATE TABLE文を生成
-            if (dataBridge.ChildTableNameList != null)
+            // SQLiteDataBridgeAdapterと同様の実装で、CREATE TABLE文を変換
+            if (commandCache is DuckDBPreparedCommandCache duckdbCache)
             {
-                for (var i = 0; i < dataBridge.ChildTableNameList.Count; i++)
+                var sqliteCommands = dataBridge.BuildUpCreateTableCommand(new SQLitePreparedCommandCacheDummy());
+                foreach (var sqliteCmd in sqliteCommands)
                 {
-                    var childTableName = dataBridge.ChildTableNameList[i];
-                    var childCreateTableSql = ConvertSQLiteToDuckDBCreateTable(
-                        dataBridge.ChildCreateTableSourcesList[i].GetCommandText(childTableName));
-                    var childCommand = commandCache.Get(childCreateTableSql);
-                    yield return childCommand;
+                    var duckdbSql = ConvertSQLiteToDuckDBCreateTable(sqliteCmd.GetLoggingQuery());
+                    yield return commandCache.Get(duckdbSql);
                 }
+            }
+            else
+            {
+                throw new InvalidOperationException("DuckDBDataBridgeAdapter requires DuckDBPreparedCommandCache");
             }
         }
 
         public IEnumerable<IPreparedCommand> BuildUpInsertCommand(IPreparedCommandCache commandCache, DataBridge dataBridge)
         {
-            // SQLite用のDataBridgeメソッドはSQLitePreparedCommandCacheに依存しているため、
-            // DuckDBでは独自の実装が必要
-            
-            // メインテーブルのINSERT文を生成
-            var columns = dataBridge.Columns.Value;
-            var columnNames = new List<string>();
-            var paramNames = new List<string>();
-            
-            foreach (var column in columns.Where(c => !c.IsId))
+            if (commandCache is DuckDBPreparedCommandCache duckdbCache)
             {
-                columnNames.Add(column.ColumnName);
-                paramNames.Add("$" + column.ParameterName);
-            }
-            
-            var insertSql = $"INSERT INTO {dataBridge.TableName} ({string.Join(", ", columnNames)}) VALUES ({string.Join(", ", paramNames)})";
-            var command = commandCache.Get(insertSql);
-            
-            // パラメータ値を設定
-            var baseGetter = dataBridge.BaseGetter;
-            foreach (var column in columns.Where(c => !c.IsId))
-            {
-                var value = baseGetter(column.ColumnName);
-                if (command is DuckDBPreparedCommand duckdbCmd && duckdbCmd.Command is DuckDBCommand duckdbCommand)
+                var sqliteCommands = dataBridge.BuildUpInsertCommand(new SQLitePreparedCommandCacheDummy());
+                foreach (var sqliteCmd in sqliteCommands)
                 {
-                    var param = duckdbCommand.CreateParameter();
-                    param.ParameterName = "$" + column.ParameterName;
-                    param.Value = value ?? DBNull.Value;
-                    duckdbCommand.Parameters.Add(param);
+                    // INSERT文はそのまま使用可能
+                    yield return commandCache.Get(sqliteCmd.GetLoggingQuery());
                 }
             }
-            
-            yield return command;
-
-            // 子テーブルのINSERT文を生成
-            if (dataBridge.ChildTableNameList != null)
+            else
             {
-                for (var i = 0; i < dataBridge.ChildTableNameList.Count; i++)
-                {
-                    var childTableName = dataBridge.ChildTableNameList[i];
-                    var childRowCount = dataBridge.ChildRowCountList[i];
-                    var childRowMasks = dataBridge.ChildRowMasksList[i];
-                    var childGetter = dataBridge.ChildGetterList[i];
-                    var childPureColumns = dataBridge.ChildPureColumnsList[i];
-
-                    for (var j = 0; j < childRowCount; j++)
-                    {
-                        if (childRowMasks[j])
-                        {
-                            var childColumnNames = new List<string>();
-                            var childParamNames = new List<string>();
-                            
-                            foreach (var column in childPureColumns.Value.Where(c => !c.IsId))
-                            {
-                                childColumnNames.Add(column.ColumnName);
-                                childParamNames.Add("$" + column.ParameterName + "_" + j);
-                            }
-                            
-                            var childInsertSql = $"INSERT INTO {childTableName} ({string.Join(", ", childColumnNames)}) VALUES ({string.Join(", ", childParamNames)})";
-                            var childCommand = commandCache.Get(childInsertSql);
-                            
-                            // パラメータ値を設定
-                            foreach (var column in childPureColumns.Value.Where(c => !c.IsId))
-                            {
-                                var value = childGetter(dataBridge.Prefix + j + column.ColumnName);
-                                if (childCommand is DuckDBPreparedCommand duckdbCmd && duckdbCmd.Command is DuckDBCommand duckdbCommand)
-                                {
-                                    var param = duckdbCommand.CreateParameter();
-                                    param.ParameterName = "$" + column.ParameterName + "_" + j;
-                                    param.Value = value ?? DBNull.Value;
-                                    duckdbCommand.Parameters.Add(param);
-                                }
-                            }
-                            
-                            yield return childCommand;
-                        }
-                    }
-                }
+                throw new InvalidOperationException("DuckDBDataBridgeAdapter requires DuckDBPreparedCommandCache");
             }
         }
 
@@ -163,6 +94,40 @@ namespace Urasandesu.JVLinkToSQLite.JVLinkWrappers.DataBridges
             sql = Regex.Replace(sql, @"\bDATETIME\b", "TIMESTAMP", RegexOptions.IgnoreCase);
 
             return sql;
+        }
+
+        /// <summary>
+        /// SQLitePreparedCommandCacheのダミー実装
+        /// </summary>
+        private class SQLitePreparedCommandCacheDummy : Urasandesu.JVLinkToSQLite.Basis.Mixins.System.Data.SQLitePreparedCommandCache
+        {
+            public SQLitePreparedCommandCacheDummy() : base(null)
+            {
+            }
+
+            public override SQLitePreparedCommand Get(string key)
+            {
+                // ダミーコマンドを返す
+                return new SQLitePreparedCommandDummy(key);
+            }
+        }
+
+        /// <summary>
+        /// SQLitePreparedCommandのダミー実装
+        /// </summary>
+        private class SQLitePreparedCommandDummy : Urasandesu.JVLinkToSQLite.Basis.Mixins.System.Data.SQLitePreparedCommand
+        {
+            private readonly string _commandText;
+
+            public SQLitePreparedCommandDummy(string commandText) : base(null, null)
+            {
+                _commandText = commandText;
+            }
+
+            public override string GetLoggingQuery()
+            {
+                return _commandText;
+            }
         }
     }
 }

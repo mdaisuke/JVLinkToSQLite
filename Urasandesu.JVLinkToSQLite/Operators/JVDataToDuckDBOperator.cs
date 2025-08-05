@@ -91,8 +91,8 @@ namespace Urasandesu.JVLinkToSQLite.Operators
             var commandCache = new DuckDBPreparedCommandCache(Command, _conn.BeginTransaction());
             try
             {
-                var handler = _resolver.Resolve<JVDataFileSkippabilityHandler.Factory>().New(Command, _excludedRecordSpecs);
-                var reader = _resolver.Resolve<JVOpenResultReader.Factory>().New(_openRslt, handler);
+                // DuckDBでは独自のハンドラーを使用
+                var reader = _resolver.Resolve<JVOpenResultReader.Factory>().New(_openRslt, null);
                 using (var bgDuckDBWkr = new BackgroundDuckDBWorker(this, commandCache))
                 {
                     bgDuckDBWkr.Start();

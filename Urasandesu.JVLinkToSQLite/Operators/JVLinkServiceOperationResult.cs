@@ -90,5 +90,10 @@ namespace Urasandesu.JVLinkToSQLite.Operators
                                                     filePath,
                                                     lineNumber);
         }
+
+        /// <summary>
+        /// 操作が成功したかどうかを取得します。
+        /// </summary>
+        public bool IsSuccess => ReturnCode == 0;
     }
 }
